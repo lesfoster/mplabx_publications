@@ -2,7 +2,7 @@
  * File:   touch_sensor_main.c
  * Author: lesfo
  *
- * Created on September 14, 2024, 2:03 PM
+ * Created on October 12, 2024, 2:03 PM
  */
 // PIC16LF18324 Configuration Bit Settings
 
