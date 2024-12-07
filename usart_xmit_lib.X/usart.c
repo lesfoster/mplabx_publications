@@ -28,6 +28,7 @@ void uart_setup_tx(void)
     ANSELCbits.ANSC4 = 0;      // Pin C4 is not an analog input
     RC4PPS = 0b10100;          // Pin C4 is the Transmit pin of USART
 
+#ifndef USART_GNL_SETUP
     // When SYNC = 0, BRGH = 1, BRG16 = 1 or SYNC = 1, BRG16 = 1,
     // these settings affect the baud rate.
     TX1STAbits.BRGH = 1;
@@ -42,6 +43,9 @@ void uart_setup_tx(void)
     // Enable the USART functions
     RC1STAbits.SPEN = 1;        // Serial port is enabled
     TX1STAbits.TXEN = 1;        // Transmit is enabled
+
+#define USART_GNL_SETUP 1
+#endif
 }
 
 /**
