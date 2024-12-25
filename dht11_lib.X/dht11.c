@@ -1,10 +1,12 @@
 #include <xc.h>
 #include "dht11.h"
+#include "dht11_overrides.h"
 #include "../clock_timeout.X/clock_timeout.h"
 
 /**
  * @File      dht11.c - DHT-11 Sensor library
- * @Purpose   Use the PIC16LF18324's pin RA2 to communicate with DHT-11 sensor
+ * @Purpose   Use the PIC16LF18324's pin RA2 (or override as RA4)
+ *            to communicate with DHT-11 sensor
  * @Author    Les Foster
  * @Date      Begun 2024/12/06
  * @Notes     - Warning: no attempt has been made to operate pin-neutral
@@ -34,15 +36,23 @@ static volatile uint8_t in_dht_payload = 0;
 
 
 /**
- * DHT will be used from RA2 pin.
+ * DHT will be used from RA2 or RA4 pin.
  */
 void dht_setup_timer_capture(void)
 {
+#ifdef DHT_PIN_RA4
+    TRISAbits.TRISA4 = 0;        // Allow open-drain to change
+    ODCONAbits.ODCA4 = 1;        // Setup Open Drain
+    TRISAbits.TRISA4 = 1;        // Input
+    ANSELAbits.ANSA4 = 0;        // Not analog input
+    WPUAbits.WPUA4 = 0;          // No pullup
+#else
     TRISAbits.TRISA2 = 0;        // Allow open-drain to change
     ODCONAbits.ODCA2 = 1;        // Setup Open Drain
     TRISAbits.TRISA2 = 1;        // Input
     ANSELAbits.ANSA2 = 0;        // Not analog input
     WPUAbits.WPUA2 = 0;          // No pullup
+#endif
     CCP1PPS = 00010;
     // Timer backing
     T1CONbits.TMR1CS = 00;       // Fosc/4
@@ -52,8 +62,13 @@ void dht_setup_timer_capture(void)
     CCP1CONbits.CCP1MODE = 0b0011; // Edge triggering
     CCP1CONbits.CCP1EN = 1;      // Enable
     // Interrupt-on-change: IOC
+#ifdef DHT_PIN_RA4
+    IOCAPbits.IOCAP4 = 1;        // Interrupt-on-RA4 pin positive
+    IOCANbits.IOCAN4 = 1;        // Interrupt-on-RA4 pin negative
+#else
     IOCAPbits.IOCAP2 = 1;        // Interrupt-on-RA2 pin positive
     IOCANbits.IOCAN2 = 1;        // Interrupt-on-RA2 pin negative
+#endif
     CCP1CAPbits.CCP1CTS = 0b0100;// Capture source IOC interrupt
     PIE0bits.IOCIE = 1;          // Enable IOC
 
@@ -80,15 +95,29 @@ void dht_init_read(void)
     dht_timer_read_terminate();
 
     // At first, need to use the pin for output.
+
+#ifdef DHT_PIN_RA4    
+    ANSELAbits.ANSA4 = 0;       // Not analog input
+    TRISAbits.TRISA4 = 0;       // Output
+    PORTAbits.RA4 = 1;          // Set pin to match pulled-high state of line
+    ODCONAbits.ODCA4 = 0;       // Not Open Drain
+#else
     ANSELAbits.ANSA2 = 0;       // Not analog input
     TRISAbits.TRISA2 = 0;       // Output
     PORTAbits.RA2 = 1;          // Set pin to match pulled-high state of line
     ODCONAbits.ODCA2 = 0;       // Not Open Drain
+#endif
 
     // Sending the command by pulling the line low for a defined period.
+#ifdef DHT_PIN_RA4
+    PORTAbits.RA4 = 0;          // Clear the pin
+    clktmo_delay(20000);               // Hold low for 20ms
+    PORTAbits.RA4 = 1;          // Set the pin
+#else
     PORTAbits.RA2 = 0;          // Clear the pin
     clktmo_delay(20000);               // Hold low for 20ms
     PORTAbits.RA2 = 1;          // Set the pin
+#endif
 
     // Change the pin to timer capture input
     dht_setup_timer_capture();
