@@ -1,6 +1,6 @@
 #include <xc.h>
 
-#include <string.h>
+#include <string.h> 
 #include "usart_rcv.h"
 
 /*
@@ -10,10 +10,15 @@
  */
 void uart_setup_rx(void)
 {
+#ifdef USART_RCV_PIN_A0
+    ANSELAbits.ANSA0 = 0;       // Pin A0 is not an analog input
+    RXPPS = 0b00000;            // Receive pin of USART is A0
+    TRISAbits.TRISA0 = 1;       // Pin A0 is a (digital) input
+#else
     ANSELCbits.ANSC5 = 0;       // Pin C5 is not an analog input
     RXPPS = 0b10101;            // Receive pin of USART is C5
     TRISCbits.TRISC5 = 1;       // Pin C5 is a (digital) input
-
+#endif
     // Receipt will be interrupt driven
     PIE1bits.RCIE = 1;          // RCIE PIE1 interrupt enable
     INTCONbits.PEIE = 1;        // PEIE peripheral interrupt enable
@@ -28,13 +33,17 @@ void uart_setup_rx(void)
  */
 void uart_setup_rx_polled(void)
 {
+#if USART_RCV_PIN == C5
     ANSELCbits.ANSC5 = 0;       // Pin C5 is not an analog input
     RXPPS = 0b10101;            // Receive pin of USART is C5
     TRISCbits.TRISC5 = 1;       // Pin C5 is a (digital) input
-
+#else
+    ANSELCbits.ANSC2 = 0;       // Pin C2 is not an analog input
+    RXPPS = 0b10010;            // Receive pin of USART is C2
+    TRISCbits.TRISC2 = 1;       // Pin C2 is a (digital) input
+#endif
     // Enable reception
     RC1STAbits.CREN = 1;
-    
 }
 
 /**
@@ -91,4 +100,3 @@ void uart_reenable_rx(void)
     RC1STAbits.CREN = 1;
     RC1STAbits.SPEN = 1;        // Enabled.
 }
-

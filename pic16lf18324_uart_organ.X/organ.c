@@ -1,12 +1,11 @@
 /*
- * File:   uart_organ.c
+ * File:   organ.c
  * Author: lesfo
- *
- * Created on October 17, 2025, 10:21 PM
- *
+ * Created on October 20, 2025, 10:13 PM
+ * 
  * Setup PWM to send over to a passive buzzer.
  * Send information from UART to allow it to play music.
- *
+ * 
  * https://www.mouser.com/datasheet/2/268/40001800C-1314258.pdf, page 193
  * The following steps should be taken when configuring
  * the module for using the PWMx outputs:
@@ -36,12 +35,11 @@
  * configuring the RxyPPS register.
  * ? Enable the PWMx module by setting the
  * PWMxEN bit of the PWMxCON register
- *
+ * 
  * ASSUMPTIONS: clock configuration RSTOSC bits are set at 000
  * for option "HFINT32" or HFINTOSC with 2x PLL (32MHz).  Oddly,
  * to leverage this I need to assume 16MHz for my FOSC value.
  *
- * Created on May 16, 2023, 11:57 PM
  */
 
 // PIC16LF18324 Configuration Bit Settings
@@ -49,8 +47,8 @@
 // 'C' source line config statements
 
 // CONFIG1
-#pragma config FEXTOSC = OFF    // FEXTOSC External Oscillator mode Selection bits (Oscillator not enabled)
-#pragma config RSTOSC = HFINT32 // Power-up default value for COSC bits (HFINTOSC with 2x PLL (32MHz))
+#pragma config FEXTOSC = ECH    // FEXTOSC External Oscillator mode Selection bits (EC (external clock) above 8 MHz)
+#pragma config RSTOSC = EXT1X   // Power-up default value for COSC bits (EXTOSC operating per FEXTOSC bits )
 #pragma config CLKOUTEN = OFF   // Clock Out Enable bit (CLKOUT function is disabled; I/O or oscillator function on OSC2)
 #pragma config CSWEN = ON       // Clock Switch Enable bit (Writing to NOSC and NDIV is allowed)
 #pragma config FCMEN = ON       // Fail-Safe Clock Monitor Enable (Fail-Safe Clock Monitor is enabled)
@@ -58,7 +56,7 @@
 // CONFIG2
 #pragma config MCLRE = ON       // Master Clear Enable bit (MCLR/VPP pin function is MCLR; Weak pull-up enabled)
 #pragma config PWRTE = OFF      // Power-up Timer Enable bit (PWRT disabled)
-#pragma config WDTE = OFF       // Watchdog Timer Enable bits (WDT disabled; SWDTEN is ignored)
+#pragma config WDTE = ON        // Watchdog Timer Enable bits (WDT enabled, SWDTEN is ignored)
 #pragma config LPBOREN = OFF    // Low-power BOR enable bit (ULPBOR disabled)
 #pragma config BOREN = ON       // Brown-out Reset Enable bits (Brown-out Reset enabled, SBOREN bit ignored)
 #pragma config BORV = LOW       // Brown-out Reset Voltage selection bit (Brown-out voltage (Vbor) set to 2.45V)
@@ -78,22 +76,25 @@
 // Use project enums instead of #define for ON and OFF.
 
 #include <xc.h>
+// Override
+#define USART_RCV_PIN_A0 1
 #include "../usart_rcv_lib.X/usart_rcv.h"
 #include "../usart_xmit_lib.X/usart.h"
 #include "../clock_timeout.X/clock_timeout.h"
 
-static uint16_t C_ = 523;
-static uint16_t c_ = 554;
-static uint16_t D_ = 587;
-static uint16_t d_ = 622;
-static uint16_t E_ = 659;
-static uint16_t F_ = 698;
-static uint16_t f_ = 740;
-static uint16_t G_ = 734;
-static uint16_t g_ = 831;
-static uint16_t A_ = 880;
-static uint16_t a_ = 932;
-static uint16_t B_ = 988;
+
+static int C_ = 523;
+static int c_ = 554;
+static int D_ = 587;
+static int d_ = 622;
+static int E_ = 659;
+static int F_ = 698;
+static int f_ = 740;
+static int G_ = 734;
+static int g_ = 831;
+static int A_ = 880;
+static int a_ = 932;
+static int B_ = 988;
 
 // Giving plenty of input room in case of oddities.
 static unsigned char USART_RCV_MSG[RCV_MSG_LEN];
@@ -116,7 +117,7 @@ static void setup_pwm(void)
 
     // Clear interrupt.
     PIR1bits.TMR2IF = 0;
-
+    
     // Prescaler as direct input (x 1)
     // b1=0,b0=0 ==> prescaler=1; b1=0,b0=1 ==> prescaler=4;
     // b1=1,b0=0 ==> prescaler=16; b1=1,b0=1 ==> prescaler=64
@@ -142,7 +143,7 @@ static void frequency_and_duty(uint16_t freq)
 {
     // disable the PWM module
     PWM5CONbits.PWM5EN = 0;
-
+    
     // PR2 gets the PWM period value.  Length of the whole wave.
     // PR2 = PWMPer/(4*Tosc*TMR2prescale) - 1
     // -or-
@@ -168,7 +169,7 @@ static void short_wait(uint16_t waitcount)
 {
     for (uint16_t i = 0; i < waitcount; i++)
     {
-        // 200 ?s
+        // 200 µs
         clktmo_delay(200);
     }
 }
@@ -201,14 +202,14 @@ void __interrupt() isr(void)
             usart_rcv_pos = 0;
         }
 
-        // Handling the receive interrupt.
+        // Handling the receive interrupt.        
         USART_RCV_MSG[usart_rcv_pos] = RC1REG;
         if (USART_RCV_MSG[usart_rcv_pos] == '\n')
         {
             // Set only here in the interrupt handler
             is_eobuff = 1;
         }
-
+        
         usart_rcv_pos ++;
     }
 
@@ -232,7 +233,7 @@ void main(void)
     unsigned char song_buffer[RCV_MSG_LEN];
     uint8_t song_len = 0;
     uint8_t note = 0;
-
+    
     while(1)
     {
         if (is_eobuff == 1)
@@ -250,7 +251,7 @@ void main(void)
 
             // Clear buffer to avoid accidental end-line detection
             clear_buffer();
-
+            
             if (song_len < 0)
             {
                 song_len = 0;
@@ -264,7 +265,7 @@ void main(void)
         {
             continue;
         }
-
+        
         if (note == song_len)
         {
             note = 0;
