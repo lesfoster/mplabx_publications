@@ -37,8 +37,8 @@ void uart_setup_tx(void)
 
     // Set the BAUD rate
     // See table 31-4 of Data Sheet.
-    SPBRGH = 0;
-    SPBRGL = 68;
+    SPBRGH = 0x0D;
+    SPBRGL = 0x04;
 
     // Enable the USART functions
     RC1STAbits.SPEN = 1;        // Serial port is enabled

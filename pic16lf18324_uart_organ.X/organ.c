@@ -82,7 +82,6 @@
 #include "../usart_xmit_lib.X/usart.h"
 #include "../clock_timeout.X/clock_timeout.h"
 
-
 static int C_ = 523;
 static int c_ = 554;
 static int D_ = 587;
@@ -229,6 +228,7 @@ void main(void)
 
     clear_buffer();
     setup_interrupts();
+    clktmo_setup_delay_clock();
 
     unsigned char song_buffer[RCV_MSG_LEN];
     uint8_t song_len = 0;
@@ -328,7 +328,7 @@ void main(void)
             break;
         }
         // Wait a while...
-        short_wait(3);
+        short_wait(2000);
         // Next note
         note++;
 
