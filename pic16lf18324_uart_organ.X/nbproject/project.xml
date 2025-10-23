@@ -9,8 +9,8 @@
             <sourceEncoding>ISO-8859-1</sourceEncoding>
             <make-dep-projects>
                 <make-dep-project>../clock_timeout.X</make-dep-project>
-                <make-dep-project>../usart_rcv_lib.X</make-dep-project>
-                <make-dep-project>../usart_xmit_lib.X</make-dep-project>
+                <make-dep-project>../../MPLABXProjects/usart_rcv_lib.X</make-dep-project>
+                <make-dep-project>../../MPLABXProjects/usart_xmit_lib.X</make-dep-project>
             </make-dep-projects>
             <sourceRootList/>
             <confList>
